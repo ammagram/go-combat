@@ -3,9 +3,78 @@ package model
 import (
 	"bytes"
 	"errors"
+	"math/bits"
 	"testing"
 	"time"
 )
+
+func TestJobModel_transitionTo(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    JobStatus
+		to      JobStatus
+		wantErr error
+	}{
+		{name: "created -> waiting", from: Created, to: Waiting, wantErr: nil},
+		{name: "created -> running", from: Created, to: Running, wantErr: ErrInvalidTransition},
+		{name: "created -> done", from: Created, to: Done, wantErr: ErrInvalidTransition},
+		{name: "created -> created", from: Created, to: Created, wantErr: ErrInvalidTransition},
+
+		{name: "waiting -> created", from: Waiting, to: Created, wantErr: ErrInvalidTransition},
+		{name: "waiting -> running", from: Waiting, to: Running, wantErr: nil},
+		{name: "waiting -> done", from: Waiting, to: Done, wantErr: ErrInvalidTransition},
+		{name: "waiting -> waiting", from: Waiting, to: Waiting, wantErr: ErrInvalidTransition},
+
+		{name: "running -> created", from: Running, to: Created, wantErr: ErrInvalidTransition},
+		{name: "running -> waiting", from: Running, to: Waiting, wantErr: nil},
+		{name: "running -> done", from: Running, to: Done, wantErr: nil},
+		{name: "running -> running", from: Running, to: Running, wantErr: ErrInvalidTransition},
+
+		{name: "done -> created", from: Done, to: Created, wantErr: ErrInvalidTransition},
+		{name: "done -> waiting", from: Done, to: Waiting, wantErr: ErrInvalidTransition},
+		{name: "done -> running", from: Done, to: Running, wantErr: ErrInvalidTransition},
+		{name: "done -> done", from: Done, to: Done, wantErr: ErrInvalidTransition},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			job := JobModel{Status: tt.from}
+			var wantStatus JobStatus
+			if tt.wantErr == nil {
+				wantStatus = tt.to
+			} else {
+				wantStatus = tt.from
+			}
+
+			// Act
+			err := job.transitionTo(tt.to)
+
+			// Assert
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("transitionTo() got %v, want %v", err, tt.wantErr)
+			}
+			if job.Status != wantStatus {
+				t.Errorf("transitionTo() got %v, want %v", job.Status, wantStatus)
+			}
+		})
+	}
+}
+
+func TestTransitions_GrayCode(t *testing.T) {
+	for from, targets := range transitions {
+		for _, to := range targets {
+			t.Run(from.String()+" -> "+to.String(), func(t *testing.T) {
+				diff := uint8(from ^ to)
+
+				if got := bits.OnesCount8(diff); got != 1 {
+					t.Errorf("%s (%02b) -> %s (%02b): differ in %d bits, want 1",
+						from, uint8(from), to, uint8(to), got)
+				}
+			})
+		}
+	}
+}
 
 func TestJobModel_Start(t *testing.T) {
 	tests := []struct {
@@ -14,10 +83,10 @@ func TestJobModel_Start(t *testing.T) {
 		wantErr    error
 		wantStatus JobStatus
 	}{
-		{name: "created -> running", from: Created, wantErr: nil, wantStatus: Running},
-		{name: "waiting -> running", from: Waiting, wantErr: nil, wantStatus: Running},
-		{name: "running -> running", from: Running, wantErr: ErrInvalidTransition, wantStatus: Running},
-		{name: "done -> running", from: Done, wantErr: ErrInvalidTransition, wantStatus: Done},
+		{name: "from: Created", from: Created, wantErr: ErrInvalidTransition, wantStatus: Created},
+		{name: "from: Waiting", from: Waiting, wantErr: nil, wantStatus: Running},
+		{name: "from: Running", from: Running, wantErr: ErrInvalidTransition, wantStatus: Running},
+		{name: "from: Done", from: Done, wantErr: ErrInvalidTransition, wantStatus: Done},
 	}
 
 	for _, tt := range tests {

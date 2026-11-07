@@ -6,6 +6,8 @@ import (
 )
 
 func Register(mux *http.ServeMux, jobs *service.JobService) {
-	mux.HandleFunc("POST /jobs", createJob(jobs))
-	mux.HandleFunc("GET /jobs/{id}", getJob(jobs))
+	jobController := NewJobController(jobs)
+
+	mux.HandleFunc("POST /jobs", jobController.Create)
+	mux.HandleFunc("GET /jobs/{id}", jobController.Get)
 }

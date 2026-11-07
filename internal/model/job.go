@@ -37,15 +37,15 @@ func (s JobStatus) IsValid() bool {
 
 const (
 	Created JobStatus = 0b00
-	Running JobStatus = 0b01
-	Waiting JobStatus = 0b10
-	Done    JobStatus = 0b11
+	Waiting JobStatus = 0b01
+	Running JobStatus = 0b11
+	Done    JobStatus = 0b10
 )
 
 var transitions = map[JobStatus][]JobStatus{
-	Created: {Running, Waiting},
-	Running: {Waiting, Done},
+	Created: {Waiting},
 	Waiting: {Running},
+	Running: {Waiting, Done},
 	Done:    {},
 }
 
