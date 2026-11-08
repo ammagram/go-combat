@@ -80,6 +80,10 @@ func (j *JobModel) Complete() error {
 	return j.transitionTo(Done)
 }
 
+func (j *JobModel) Enqueue() error {
+	return j.transitionTo(Waiting)
+}
+
 func (j *JobModel) Fail(cause error) error {
 	if cause == nil {
 		return fmt.Errorf("fail: %w", ErrNilCause)

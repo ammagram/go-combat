@@ -9,6 +9,8 @@ import (
 type JobRepository interface {
 	Add(ctx context.Context, job model.JobModel) error
 	Get(ctx context.Context, id string) (model.JobModel, error)
+	Delete(ctx context.Context, id string) error
+	List(ctx context.Context) ([]model.JobModel, error)
 }
 
 type JobService struct {
