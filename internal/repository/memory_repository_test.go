@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"jobflow/internal/model"
+	"jobflow/internal/service"
 	"reflect"
 	"testing"
 	"time"
 )
+
+var _ service.JobRepository = (*MemoryJobRepository)(nil)
 
 func newRepoWith(t *testing.T, jobs ...model.JobModel) *MemoryJobRepository {
 	t.Helper()

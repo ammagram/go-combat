@@ -47,6 +47,19 @@ func (r *MemoryJobRepository) Get(ctx context.Context, id string) (model.JobMode
 	return job, nil
 }
 
+func (r *MemoryJobRepository) Update(ctx context.Context, job model.JobModel) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.jobs[job.ID]; !ok {
+		return fmt.Errorf("job %q: %w", job.ID, ErrNotFound)
+	}
+
+	r.jobs[job.ID] = job
+
+	return nil
+}
+
 func (r *MemoryJobRepository) Delete(ctx context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
