@@ -108,6 +108,38 @@ func TestJobModel_Start(t *testing.T) {
 	}
 }
 
+func TestJobModel_Enqueue(t *testing.T) {
+	tests := []struct {
+		name       string
+		from       JobStatus
+		wantErr    error
+		wantStatus JobStatus
+	}{
+		{name: "from: Created", from: Created, wantErr: nil, wantStatus: Waiting},
+		{name: "from: Running", from: Running, wantErr: nil, wantStatus: Waiting},
+		{name: "from: Waiting", from: Waiting, wantErr: ErrInvalidTransition, wantStatus: Waiting},
+		{name: "from: Done", from: Done, wantErr: ErrInvalidTransition, wantStatus: Done},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			job := JobModel{Status: tt.from}
+
+			// Act
+			err := job.Enqueue()
+
+			// Assert
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tt.wantErr)
+			}
+			if job.Status != tt.wantStatus {
+				t.Errorf("status = %v, want %v", job.Status, tt.wantStatus)
+			}
+		})
+	}
+}
+
 func TestJobModel_Complete(t *testing.T) {
 	tests := []struct {
 		name       string

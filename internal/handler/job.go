@@ -7,12 +7,13 @@ import (
 	"jobflow/internal/httpx"
 	"jobflow/internal/model"
 	"jobflow/internal/repository"
+	"jobflow/internal/service"
 	"log/slog"
 	"net/http"
 )
 
 type jobService interface {
-	Create(ctx context.Context, id string, jobType string, payload []byte) error
+	Create(ctx context.Context, in service.CreateJobInput) error
 	GetByID(ctx context.Context, id string) (model.JobModel, error)
 }
 
@@ -28,12 +29,20 @@ func (c *JobController) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := c.jobs.Create(r.Context(), req.ID, req.Type, req.Payload); err != nil {
+	input := service.CreateJobInput{
+		ID:      req.ID,
+		Type:    req.Type,
+		Payload: req.Payload,
+	}
+
+	if err := c.jobs.Create(r.Context(), input); err != nil {
 		switch {
 		case errors.Is(err, repository.ErrAlreadyExists):
 			httpx.WriteError(w, http.StatusConflict, "job already exists")
 		case errors.Is(err, model.ErrInvalidJob):
 			httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, service.ErrQueueFull), errors.Is(err, service.ErrServiceClosed):
+			httpx.WriteError(w, http.StatusServiceUnavailable, "service unavailable, retry later")
 		default:
 			slog.Error("JobController.Create()", "err", err)
 			httpx.WriteError(w, http.StatusInternalServerError, "internal server error")
